@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Signature</title>
+    <link rel="icon" href="favicon-32x32.png">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+        integrity="sha384-9aIt12nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f0f0f0;
+        }
+
+        .main {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+           
+            width: 90%;
+            max-width: 1000px;
+        }
+
+        .canvas {
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .control-block {
+            flex: 1;
+            margin: 10px;
+            max-width: 250px;
+        }
+
+        .control-block p {
+            text-align: center;
+        }
+
+        .bottom {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .bottom > button {
+            margin: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main">
+        <div class="controls">
+            <div class="control-block">
+                <p>Text color picker</p>
+                <input class="form-control" type="color" id="colorPicker">
+            </div>
+            <div class="control-block">
+                <p>Background</p>
+                <input class="form-control" type="color" id="canvasColor">
+            </div>
+            <div class="control-block">
+                <p>Font size</p>
+                <select class="custom-select" id="fontSizePicker">
+                    <option value="5">5px</option>
+                    <option value="10">10px</option>
+                    <option value="20">20px</option>
+                    <option value="30">30px</option>
+                    <option value="40">40px</option>
+                    <option value="50">50px</option>
+                </select>
+            </div>
+            <div class="control-block">
+                <p>Thickness</p>
+                <input type="range" class="form-control-range" id="lineWidthSlider" min="1" max="20" value="1">
+            </div>
+        </div>
+
+        <canvas class="canvas" id="myCanvas" width="800" height="500"></canvas>
+
+        <div class="bottom">
+            <button type="button" class="btn btn-danger" id="clearButton">Clear</button>
+            <button type="button" class="btn btn-success" id="saveButton">Save & download</button>
+            <button type="button" class="btn btn-warning" id="retrieveButton">Retrieve saved signature</button>
+            <button type="button" class="btn btn-secondary" id="undoButton">Undo</button>
+        </div>
+    </div>
+
+    <script>
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let undoStack = [];
+
+        const colorPicker = document.getElementById('colorPicker');
+        const canvasColor = document.getElementById('canvasColor');
+        const canvas = document.getElementById('myCanvas');
+        const clearButton = document.getElementById('clearButton');
+        const saveButton = document.getElementById('saveButton');
+        const retrieveButton = document.getElementById('retrieveButton');
+        const undoButton = document.getElementById('undoButton');
+        const fontSizePicker = document.getElementById('fontSizePicker');
+        const lineWidthSlider = document.getElementById('lineWidthSlider');
+
+        const ctx = canvas.getContext('2d');
+
+        colorPicker.addEventListener('change', (event) => {
+            ctx.fillStyle = event.target.value;
+            ctx.strokeStyle = event.target.value;
+        });
+
+        canvasColor.addEventListener('change', (event) => {
+            ctx.fillStyle = event.target.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        canvas.addEventListener('mousedown', (event) => {
+            isDrawing = true;
+            [lastX, lastY] = [event.offsetX, event.offsetY];
+            undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (!isDrawing) return;
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(event.offsetX, event.offsetY);
+            ctx.stroke();
+            [lastX, lastY] = [event.offsetX, event.offsetY];
+        });
+
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        fontSizePicker.addEventListener('change', (event) => {
+            ctx.lineWidth = event.target.value;
+        });
+
+        lineWidthSlider.addEventListener('change', (event) => {
+            ctx.lineWidth = event.target.value;
+        });
+
+        clearButton.addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        saveButton.addEventListener('click', () => {
+            localStorage.setItem('canvasContents', canvas.toDataURL());
+            const link = document.createElement('a');
+            link.download = 'my-canvas.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        retrieveButton.addEventListener('click', () => {
+            const savedCanvas = localStorage.getItem('canvasContents');
+            if (savedCanvas) {
+                const img = new Image();
+                img.src = savedCanvas;
+                img.onload = () => ctx.drawImage(img, 0, 0);
+            }
+        });
+
+        undoButton.addEventListener('click', () => {
+            if (undoStack.length > 0) {
+                const imageData = undoStack.pop();
+                ctx.putImageData(imageData, 0, 0);
+            }
+        });
+    </script>
+</body>
+
+</html>
